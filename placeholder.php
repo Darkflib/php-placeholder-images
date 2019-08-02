@@ -8,9 +8,6 @@
 
 // Inspired by http://placehold.it/
 
-header ("Content-type: image/png");
-
-// Convert hex to rgb (modified from csstricks.com)
 function hex2rgb($colour)
 {
     $colour = preg_replace("/[^abcdef0-9]/i", "", $colour);
@@ -22,17 +19,20 @@ function hex2rgb($colour)
     elseif (strlen($colour) == 3)
     {
         list($r, $g, $b) = array($colour[0] . $colour[0], $colour[1] . $colour[1], $colour[2] . $colour[2]);
-        return Array("r" => hexdec($r), "g" => hexdec($g), "b" => hexdec($b));    
+        return Array("r" => hexdec($r), "g" => hexdec($g), "b" => hexdec($b));
+    } else {
+        return Array("r" => 192, "g" => 192, "b" => 192);
     }
-    return false;
 }
 
 
 // Dimensions
 $getsize    = isset($_GET['size']) ? $_GET['size'] : '100x100';
 $dimensions = explode('x', $getsize);
+if (($dimensions[0]<32) or ($dimensions[0]>2048) or ($dimensions[1]<32) or ($dimensions[1]>2048)) {
+    die('dimensions not in range of 32-2048');
+}
 
-// Create image
 $image      = imagecreate($dimensions[0], $dimensions[1]);
 
 // Colours
@@ -40,25 +40,27 @@ $bg         = isset($_GET['bg']) ? $_GET['bg'] : 'ccc';
 $bg         = hex2rgb($bg);
 $setbg      = imagecolorallocate($image, $bg['r'], $bg['g'], $bg['b']);
 
-$fg         = isset($_GET['fg']) ? $_GET['fg'] : '555';
-$fg         = hex2rgb($fg); 
+$fg         = isset($_GET['fg']) ? $_GET['fg'] : '000';
+$fg         = hex2rgb($fg);
 $setfg      = imagecolorallocate($image, $fg['r'], $fg['g'], $fg['b']);
 
 // Text
 $text       = isset($_GET['text']) ? strip_tags($_GET['text']) : $getsize;
 $text       = str_replace('+', ' ', $text);
 
-// Text positioning
-$fontsize   = 4;
-$fontwidth  = imagefontwidth($fontsize);    // width of a character
-$fontheight = imagefontheight($fontsize);   // height of a character
-$length     = strlen($text);                // number of characters
-$textwidth  = $length * $fontwidth;         // text width
-$xpos       = (imagesx($image) - $textwidth) / 2;
-$ypos       = (imagesy($image) - $fontheight) / 2;
+$font='../Roboto/Roboto-Regular.ttf';
 
-// Generate text
-imagestring($image, $fontsize, $xpos, $ypos, $text, $setfg);
+if ($dimensions[0]<256) {
+        $fontsize   = 10;
+} elseif ($dimensions[0]>512) {
+        $fontsize = 36;
+} else {
+        $fontsize = 18;
+}
+$bbox=imagettfbbox($fontsize,0,$font,$text);
+$xpos = $bbox[0] + (imagesx($image) / 2) - ($bbox[4] / 2);
+$ypos = $bbox[1] + (imagesy($image) / 2) - ($bbox[5] / 2);
+imagettftext($image, $fontsize, 0, $xpos, $ypos, $setfg, $font, $text);
 
-// Render image
+header ("Content-type: image/png");
 imagepng($image);
